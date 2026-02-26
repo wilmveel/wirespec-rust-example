@@ -13,11 +13,11 @@ case "${OS}_${ARCH}" in
   *) echo "Unsupported platform: ${OS}_${ARCH}" >&2; exit 1 ;;
 esac
 
-WIRESPEC="$SCRIPT_DIR/bin/${PLATFORM}/wirespec"
-mkdir -r "$SCRIPT_DIR/target/gen"
+WIRESPEC="$SCRIPT_DIR/../bin/${PLATFORM}/wirespec"
+mkdir -p "$SCRIPT_DIR/target/gen"
 "$WIRESPEC" convert OpenAPIV2 \
-  -i "$SCRIPT_DIR/openapi/petstore.json" \
-  -o "$SCRIPT_DIR/target/gen" \
+  -i "$SCRIPT_DIR/../openapi/petstore.json" \
+  -o "$SCRIPT_DIR/../target/gen" \
   -l Rust \
   -p '' \
   --shared
