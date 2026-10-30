@@ -1,0 +1,159 @@
+use std::any::TypeId;
+use std::collections::HashMap;
+pub trait Model {}
+pub trait Shape: Model {
+    fn validate(&self) -> Vec<String>;
+}
+pub trait Enum: Sized {
+    fn label(&self) -> &str;
+    fn from_label(s: &str) -> Option<Self>;
+}
+pub trait Refined<T> {
+    fn value(&self) -> &T;
+    fn validate(&self) -> bool;
+}
+pub trait Endpoint {}
+pub trait Channel {}
+pub trait Rpc {}
+pub trait Path {}
+pub trait Queries {}
+pub trait Headers {}
+pub trait Handler {}
+pub trait Call {}
+#[derive(Debug, Clone, Default, PartialEq)]
+pub enum Method {
+    #[default]
+    GET,
+    PUT,
+    POST,
+    DELETE,
+    OPTIONS,
+    HEAD,
+    PATCH,
+    TRACE,
+}
+pub trait Request<T> {
+    fn path(&self) -> &dyn Path;
+    fn method(&self) -> &Method;
+    fn queries(&self) -> &dyn Queries;
+    fn headers(&self) -> &dyn RequestHeaders;
+    fn body(&self) -> &T;
+}
+pub trait RequestHeaders: Headers {}
+pub trait Response<T> {
+    fn status(&self) -> i32;
+    fn headers(&self) -> &dyn ResponseHeaders;
+    fn body(&self) -> &T;
+}
+pub trait ResponseHeaders: Headers {}
+pub trait BodySerializer {
+    fn serialize_body<T: 'static>(&self, t: &T, r#type: TypeId) -> Vec<u8>;
+}
+pub trait BodyDeserializer {
+    fn deserialize_body<T: 'static>(&self, raw: &[u8], r#type: TypeId) -> T;
+}
+pub trait BodySerialization: BodySerializer + BodyDeserializer {}
+pub trait PathSerializer {
+    fn serialize_path<T: std::fmt::Display>(&self, t: &T, r#type: TypeId) -> String;
+}
+pub trait PathDeserializer {
+    fn deserialize_path<T: std::str::FromStr>(&self, raw: &str, r#type: TypeId) -> T where T::Err: std::fmt::Debug;
+}
+pub trait PathSerialization: PathSerializer + PathDeserializer {}
+pub trait ParamSerializer {
+    fn serialize_param<T: 'static>(&self, value: &T, r#type: TypeId) -> Vec<String>;
+}
+pub trait ParamDeserializer {
+    fn deserialize_param<T: 'static>(&self, values: &[String], r#type: TypeId) -> T;
+}
+pub trait ParamSerialization: ParamSerializer + ParamDeserializer {}
+pub trait Serializer: BodySerializer + PathSerializer + ParamSerializer {}
+pub trait Deserializer: BodyDeserializer + PathDeserializer + ParamDeserializer {}
+pub trait Serialization: Serializer + Deserializer {}
+#[derive(Debug, Clone, PartialEq)]
+pub struct RawRequest {
+    pub method: String,
+    pub path: Vec<String>,
+    pub queries: std::collections::HashMap<String, Vec<String>>,
+    pub headers: std::collections::HashMap<String, Vec<String>>,
+    pub body: Option<Vec<u8>>,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct RawResponse {
+    pub status_code: i32,
+    pub headers: std::collections::HashMap<String, Vec<String>>,
+    pub body: Option<Vec<u8>>,
+}
+pub trait Transportation {
+    async fn transport(&self, request: &RawRequest) -> RawResponse;
+}
+pub trait GeneratorField<T> {}
+pub struct GeneratorFieldString {
+    pub regex: Option<String>,
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+}
+pub struct GeneratorFieldInteger64 {
+    pub min: Option<i64>,
+    pub max: Option<i64>,
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+}
+pub struct GeneratorFieldInteger32 {
+    pub min: Option<i32>,
+    pub max: Option<i32>,
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+}
+pub struct GeneratorFieldNumber64 {
+    pub min: Option<f64>,
+    pub max: Option<f64>,
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+}
+pub struct GeneratorFieldNumber32 {
+    pub min: Option<f32>,
+    pub max: Option<f32>,
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+}
+pub struct GeneratorFieldBoolean {
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+}
+pub struct GeneratorFieldBytes {
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+}
+pub struct GeneratorFieldEnum {
+    pub values: Vec<String>,
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+    pub r#type: std::any::TypeId,
+}
+pub struct GeneratorFieldUnion {
+    pub variants: Vec<String>,
+    pub annotations: Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>,
+    pub r#type: std::any::TypeId,
+}
+pub struct GeneratorFieldArray<T> {
+    pub generate: Box<dyn Fn(Vec<String>) -> T>,
+}
+pub struct GeneratorFieldNullable<T> {
+    pub generate: Box<dyn Fn(Vec<String>) -> T>,
+}
+pub struct GeneratorFieldShape<T> {
+    pub annotations: std::collections::HashMap<String, Vec<std::collections::HashMap<String, Box<dyn std::any::Any>>>>,
+    pub generate: Box<dyn Fn(Vec<String>) -> T>,
+    pub r#type: std::any::TypeId,
+}
+pub struct GeneratorFieldDict<V> {
+    pub generate: Box<dyn Fn(Vec<String>) -> V>,
+}
+pub trait Generator {
+    fn generate<T>(&self, path: Vec<String>, field: impl GeneratorField<T>) -> T;
+}
+pub trait Client {
+    type Transport: Transportation;
+    type Ser: Serialization;
+    fn transport(&self) -> &Self::Transport;
+    fn serialization(&self) -> &Self::Ser;
+}
+pub trait Server {
+    type Req;
+    type Res;
+    fn path_template(&self) -> &'static str;
+    fn method(&self) -> Method;
+}

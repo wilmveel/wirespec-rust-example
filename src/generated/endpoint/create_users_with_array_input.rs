@@ -1,0 +1,102 @@
+use super::super::wirespec::*;
+use regex;
+use super::super::model::user::User;
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Path;
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Queries;
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct RequestHeaders;
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Request {
+    pub path: Path,
+    pub method: Method,
+    pub queries: Queries,
+    pub headers: RequestHeaders,
+    pub body: Vec<User>,
+}
+impl Request {
+    pub fn new(body: Vec<User>) -> Self {
+        Request {
+            path: Path {},
+            method: Method::POST,
+            queries: Queries {},
+            headers: RequestHeaders {},
+            body: body
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum Response {
+    ResponseDefault(ResponseDefault),
+}
+impl From<ResponseDefault> for Response { fn from(value: ResponseDefault) -> Self { Response::ResponseDefault(value) } }
+#[derive(Debug, Clone, PartialEq)]
+pub enum ResponsedXX {
+    ResponseDefault(ResponseDefault),
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum ResponseUnit {
+    ResponseDefault(ResponseDefault),
+}
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ResponseDefaultHeaders;
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ResponseDefault {
+    pub status: i32,
+    pub headers: ResponseDefaultHeaders,
+    pub body: (),
+}
+impl ResponseDefault {
+    pub fn new() -> Self {
+        ResponseDefault {
+            status: 0_i32,
+            headers: ResponseDefaultHeaders {},
+            body: ()
+        }
+    }
+}
+pub mod CreateUsersWithArrayInput {
+    use super::*;
+    pub trait Handler {
+        async fn create_users_with_array_input(&self, request: Request) -> Response;
+    }
+    pub trait Call {
+        async fn create_users_with_array_input(&self, body: Vec<User>) -> Response;
+    }
+    pub fn to_raw_request(serialization: &impl Serializer, request: Request) -> RawRequest {
+        return RawRequest { method: format!("{:?}", request.method), path: vec![String::from("user"), String::from("createWithArray")], queries: std::collections::HashMap::new(), headers: std::collections::HashMap::new(), body: Some(serialization.serialize_body(&request.body, std::any::TypeId::of::<Vec<User>>())) };
+    }
+    pub fn from_raw_request(serialization: &impl Deserializer, request: RawRequest) -> Request {
+        return Request::new(request.body.as_ref().map(|it| serialization.deserialize_body(it, std::any::TypeId::of::<Vec<User>>())).expect("body is null"));
+    }
+    pub fn to_raw_response(serialization: &impl Serializer, response: Response) -> RawResponse {
+        match response {
+            Response::ResponseDefault(r) => {
+                return RawResponse { status_code: r.status, headers: std::collections::HashMap::new(), body: None };
+            }
+        }
+    }
+    pub fn from_raw_response(serialization: &impl Deserializer, response: RawResponse) -> Response {
+        match response.status_code {
+            _ => {
+                panic!("Cannot match response with status: {}", response.status_code);
+            }
+        }
+    }
+    impl<C: Client> Handler for C {
+        async fn create_users_with_array_input(&self, request: Request) -> Response {
+            let raw = to_raw_request(self.serialization(), request);
+            let resp = self.transport().transport(&raw).await;
+            from_raw_response(self.serialization(), resp)
+        }
+    }
+    pub struct Api;
+    impl Server for Api {
+        type Req = Request;
+        type Res = Response;
+        fn path_template(&self) -> &'static str { "/user/createWithArray" }
+        fn method(&self) -> Method { Method::POST }
+    }
+}
